@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brute Force String Matching Visualizer</title>
+    <style>
+        /* =========================================
+           CSS: GIAO DIỆN (DARK MODE & RESPONSIVE)
+           ========================================= */
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #38bdf8;
+            --text-color: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #eab308;
+            --highlight: #6366f1;
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 { text-align: center; color: var(--primary); margin-bottom: 10px; font-size: 1.8rem; }
+        p.subtitle { text-align: center; color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem; }
+
+        /* Input Section */
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 15px;
+            align-items: flex-end;
+            margin-bottom: 20px;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+        input {
+            background: #334155;
+            border: 1px solid #475569;
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: var(--transition);
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary { background: var(--primary); color: #0f172a; }
+        .btn-secondary { background: #475569; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #475569; color: white; }
+        .btn-danger { background: var(--error); color: white; }
+        
+        button:hover:not(:disabled) { transform: translateY(-2px); opacity: 0.9; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .speed-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 10px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Visualization Area */
+        .viz-area {
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 40px 0;
+            position: relative;
+        }
+
+        .row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 15px;
+            transition: var(--transition);
+            padding-left: 2px;
+        }
+
+        .char-box {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #334155;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        /* Trạng thái màu sắc */
+        .char-box.comparing { background: var(--warning); border-color: white; color: #000; transform: scale(1.05); }
+        .char-box.match { background: var(--success); border-color: white; color: white; }
+        .char-box.mismatch { background: var(--error); border-color: white; color: white; }
+        .char-box.found { background: var(--highlight); border-color: white; color: white; box-shadow: 0 0 15px var(--highlight); }
+
+        /* Stats & Legend */
+        .info-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+        .stat-value { font-size: 1.1rem; font-weight: bold; color: var(--primary); }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 12px; height: 12px; border-radius: 3px; }
+
+        /* Algorithm Info Section */
+        .algo-details {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 20px;
+        }
+        .details-card h3 { color: var(--primary); margin-bottom: 12px; font-size: 1.1rem; }
+        .details-card ul { margin-left: 20px; font-size: 0.9rem; color: var(--text-muted); }
+        .details-card li { margin-bottom: 5px; }
+        .complexity-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #334155;
+            border-radius: 4px;
+            color: var(--primary);
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .input-grid { grid-template-columns: 1fr; }
+            .algo-details { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Brute Force String Matching</h1>
+        <p class="subtitle">Trực quan hóa quá trình tìm kiếm chuỗi mẫu trực tiếp</p>
+
+        <!-- Input Section -->
+        <div class="input-grid">
+            <div class="input-group">
+                <label>Văn bản (Text)</label>
+                <input type="text" id="textInput" value="AABACAADAABAABA" placeholder="Nhập văn bản chính...">
+            </div>
+            <div class="input-group">
+                <label>Mẫu (Pattern)</label>
+                <input type="text" id="patternInput" value="AABA" placeholder="Nhập mẫu cần tìm...">
+            </div>
+            <button class="btn-secondary" onclick="generateRandom()">Random</button>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="controls">
+            <button class="btn-primary" id="startBtn" onclick="prepareAlgorithm()">Bắt đầu</button>
+            <button class="btn-outline" id="prevBtn" onclick="prevStep()" disabled>Previous</button>
+            <button class="btn-outline" id="nextBtn" onclick="nextStep()" disabled>Next</button>
+            <button class="btn-secondary" id="autoBtn" onclick="toggleAutoPlay()" disabled>Auto Play</button>
+            <button class="btn-danger" onclick="reset()">Reset</button>
+            
+            <div class="speed-box">
+                Chậm <input type="range" id="speedRange" min="100" max="1500" step="100" value="600" style="direction: rtl;"> Nhanh
+            </div>
+        </div>
+    </div>
+
+    <!-- Visualization Area -->
+    <div class="card">
+        <div class="info-bar">
+            <div class="stat-item">
+                <div class="stat-label">Vị trí i</div>
+                <div id="statI" class="stat-value">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Vị trí j</div>
+                <div id="statJ" class="stat-value">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">So sánh</div>
+                <div id="statCompare" class="stat-value">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Trạng thái</div>
+                <div id="statStatus" class="stat-value">Sẵn sàng</div>
+            </div>
+        </div>
+
+        <div class="viz-area" id="vizArea">
+            <div id="textRow" class="row"></div>
+            <div id="patternRow" class="row"></div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background:var(--warning)"></div> Đang xét</div>
+            <div class="legend-item"><div class="dot" style="background:var(--success)"></div> Khớp</div>
+            <div class="legend-item"><div class="dot" style="background:var(--error)"></div> Không khớp</div>
+            <div class="legend-item"><div class="dot" style="background:var(--highlight)"></div> Tìm thấy</div>
+        </div>
+    </div>
+
+    <!-- Knowledge Base -->
+    <div class="algo-details">
+        <div class="card details-card">
+            <h3>Ý tưởng thuật toán</h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;">
+                Thuật toán duyệt qua tất cả các vị trí có thể có của chuỗi mẫu trong văn bản chính. Tại mỗi vị trí, nó so sánh từng ký tự một từ trái sang phải.
+            </p>
+            <h3>Các bước hoạt động</h3>
+            <ul>
+                <li>Bắt đầu tại vị trí đầu tiên của Text (i = 0).</li>
+                <li>So sánh ký tự tại Text[i+j] với Pattern[j].</li>
+                <li>Nếu tất cả ký tự trong Pattern khớp, đánh dấu kết quả.</li>
+                <li>Nếu có một ký tự không khớp, dịch Pattern sang phải 1 đơn vị (i = i + 1) và bắt đầu lại từ j = 0.</li>
+            </ul>
+        </div>
+        <div class="card details-card">
+            <h3>Độ phức tạp & Sử dụng</h3>
+            <ul>
+                <li>Best Case: <span class="complexity-tag">O(n)</span></li>
+                <li>Worst Case: <span class="complexity-tag">O(n × m)</span></li>
+                <li>Sử dụng: Phù hợp với văn bản nhỏ hoặc khi không muốn cài đặt các cấu trúc dữ liệu phức tạp.</li>
+                <li>Nhược điểm: Kém hiệu quả với tập dữ liệu lớn do phải so sánh lại nhiều lần các ký tự đã biết.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* =========================================
+       JAVASCRIPT: LOGIC MÔ PHỎNG THUẬT TOÁN
+       ========================================= */
+
+    let text = "";
+    let pattern = "";
+    let steps = [];
+    let currentStep = -1;
+    let autoPlayInterval = null;
+
+    // Khởi tạo hiển thị ban đầu
+    function initDisplay() {
+        text = document.getElementById('textInput').value;
+        pattern = document.getElementById('patternInput').value;
+        
+        const textRow = document.getElementById('textRow');
+        const patternRow = document.getElementById('patternRow');
+        
+        textRow.innerHTML = '';
+        patternRow.innerHTML = '';
+
+        for (let i = 0; i < text.length; i++) {
+            textRow.innerHTML += `<div class="char-box" id="t-${i}">${text[i]}</div>`;
+        }
+        for (let j = 0; j < pattern.length; j++) {
+            patternRow.innerHTML += `<div class="char-box" id="p-${j}">${pattern[j]}</div>`;
+        }
+        
+        // Reset stats
+        document.getElementById('statI').innerText = "-";
+        document.getElementById('statJ').innerText = "-";
+        document.getElementById('statCompare').innerText = "0";
+        document.getElementById('statStatus').innerText = "Sẵn sàng";
+    }
+
+    // Chạy thuật toán để tạo danh sách các bước (Pre-calculation)
+    function prepareAlgorithm() {
+        text = document.getElementById('textInput').value;
+        pattern = document.getElementById('patternInput').value;
+
+        if (pattern.length === 0 || text.length < pattern.length) {
+            alert("Vui lòng nhập Pattern hợp lệ (ngắn hơn Text)");
+            return;
+        }
+
+        initDisplay();
+        steps = [];
+        let n = text.length;
+        let m = pattern.length;
+        let compares = 0;
+        let foundIndices = [];
+
+        for (let i = 0; i <= n - m; i++) {
+            let matchCount = 0;
+            for (let j = 0; j < m; j++) {
+                compares++;
+                
+                // Bước: Đang so sánh
+                steps.push({
+                    i, j, 
+                    type: 'comparing',
+                    compareCount: compares,
+                    matchedSoFar: matchCount,
+                    found: [...foundIndices]
+                });
+
+                if (text[i + j] === pattern[j]) {
+                    matchCount++;
+                    if (matchCount === m) {
+                        foundIndices.push(i);
+                        // Bước: Khớp hoàn toàn
+                        steps.push({
+                            i, j, 
+                            type: 'found',
+                            compareCount: compares,
+                            matchedSoFar: matchCount,
+                            found: [...foundIndices]
+                        });
+                    }
+                } else {
+                    // Bước: Không khớp
+                    steps.push({
+                        i, j, 
+                        type: 'mismatch',
+                        compareCount: compares,
+                        matchedSoFar: matchCount,
+                        found: [...foundIndices]
+                    });
+                    break;
+                }
+            }
+        }
+
+        steps.push({ type: 'end', compareCount: compares, found: foundIndices });
+        
+        // Cập nhật trạng thái nút
+        currentStep = -1;
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('autoBtn').disabled = false;
+        nextStep();
+    }
+
+    // Cập nhật giao diện theo bước hiện tại
+    function renderStep(stepIdx) {
+        const step = steps[stepIdx];
+        if (!step) return;
+
+        // Reset màu sắc
+        const allBoxes = document.querySelectorAll('.char-box');
+        allBoxes.forEach(box => box.className = 'char-box');
+
+        const patternRow = document.getElementById('patternRow');
+        const textRow = document.getElementById('textRow');
+
+        if (step.type === 'end') {
+            document.getElementById('statStatus').innerText = "Hoàn thành!";
+            document.getElementById('statI').innerText = "-";
+            document.getElementById('statJ').innerText = "-";
+            highlightFound(step.found);
+            return;
+        }
+
+        // Di chuyển pattern theo chỉ số i (45px width + 6px gap = 51px)
+        patternRow.style.transform = `translateX(${step.i * 51}px)`;
+
+        // Highlight những vị trí đã tìm thấy trước đó
+        highlightFound(step.found);
+
+        // Highlight quá trình so sánh hiện tại
+        for (let k = 0; k < step.matchedSoFar; k++) {
+            document.getElementById(`t-${step.i + k}`).classList.add('match');
+            document.getElementById(`p-${k}`).classList.add('match');
+        }
+
+        const currentT = document.getElementById(`t-${step.i + step.j}`);
+        const currentP = document.getElementById(`p-${step.j}`);
+
+        if (step.type === 'comparing') {
+            currentT.classList.add('comparing');
+            currentP.classList.add('comparing');
+            document.getElementById('statStatus').innerText = "Đang so sánh...";
+        } else if (step.type === 'mismatch') {
+            currentT.classList.add('mismatch');
+            currentP.classList.add('mismatch');
+            document.getElementById('statStatus').innerText = "Không khớp!";
+        } else if (step.type === 'found') {
+            for (let k = 0; k < pattern.length; k++) {
+                document.getElementById(`t-${step.i + k}`).classList.add('found');
+                document.getElementById(`p-${k}`).classList.add('found');
+            }
+            document.getElementById('statStatus').innerText = "Đã tìm thấy mẫu!";
+        }
+
+        // Cập nhật thông số
+        document.getElementById('statI').innerText = step.i;
+        document.getElementById('statJ').innerText = step.j;
+        document.getElementById('statCompare').innerText = step.compareCount;
+
+        // Cập nhật nút
+        document.getElementById('prevBtn').disabled = stepIdx === 0;
+        document.getElementById('nextBtn').disabled = stepIdx === steps.length - 1;
+    }
+
+    function highlightFound(indices) {
+        indices.forEach(idx => {
+            for (let k = 0; k < pattern.length; k++) {
+                document.getElementById(`t-${idx + k}`).classList.add('found');
+            }
+        });
+    }
+
+    function nextStep() {
+        if (currentStep < steps.length - 1) {
+            currentStep++;
+            renderStep(currentStep);
+        } else {
+            stopAutoPlay();
+        }
+    }
+
+    function prevStep() {
+        if (currentStep > 0) {
+            currentStep--;
+            renderStep(currentStep);
+        }
+    }
+
+    function toggleAutoPlay() {
+        const btn = document.getElementById('autoBtn');
+        if (autoPlayInterval) {
+            stopAutoPlay();
+        } else {
+            btn.innerText = "Pause";
+            btn.classList.replace('btn-secondary', 'btn-danger');
+            autoPlayInterval = setInterval(() => {
+                if (currentStep < steps.length - 1) {
+                    nextStep();
+                } else {
+                    stopAutoPlay();
+                }
+            }, 1600 - document.getElementById('speedRange').value);
+        }
+    }
+
+    function stopAutoPlay() {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        const btn = document.getElementById('autoBtn');
+        btn.innerText = "Auto Play";
+        btn.classList.replace('btn-danger', 'btn-secondary');
+    }
+
+    function reset() {
+        stopAutoPlay();
+        currentStep = -1;
+        steps = [];
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('nextBtn').disabled = true;
+        document.getElementById('prevBtn').disabled = true;
+        document.getElementById('autoBtn').disabled = true;
+        document.getElementById('patternRow').style.transform = `translateX(0)`;
+        initDisplay();
+    }
+
+    function generateRandom() {
+        const chars = "ABCD";
+        let rText = "";
+        let rPat = "";
+        for (let i = 0; i < 15; i++) rText += chars.charAt(Math.floor(Math.random() * chars.length));
+        for (let i = 0; i < 3; i++) rPat += chars.charAt(Math.floor(Math.random() * chars.length));
+        document.getElementById('textInput').value = rText;
+        document.getElementById('patternInput').value = rPat;
+        reset();
+    }
+
+    // Khởi tạo trang web
+    window.onload = initDisplay;
+</script>
+
+</body>
+</html>
